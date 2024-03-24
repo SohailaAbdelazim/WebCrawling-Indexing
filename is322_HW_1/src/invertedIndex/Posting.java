@@ -11,26 +11,27 @@ package invertedIndex;
  
 public class Posting {
 
-    public Posting next = null;
+    public Posting next;
     int docId;
     int dtf = 1;
 
     Posting(int id, int t) {
         docId = id;
         dtf=t;
+        next = null;
     }
     
     Posting(int id) {
         docId = id;
+        next = null;
     }
 
-/*    public void add(int docId){
+    public Posting add(int docId){
         if (this.docId == -1){
             this.docId = docId;
         }
-        else{
-            this.next = new Posting(docId);
-        }
+        next = new Posting(-1);
+        return next;
 
-    }*/
+    }
 }

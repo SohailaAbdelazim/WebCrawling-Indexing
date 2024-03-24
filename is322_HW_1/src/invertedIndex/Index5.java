@@ -162,20 +162,17 @@ public class Index5 {
 ///****  -1-   complete after each comment ****
 //   INTERSECT ( p1 , p2 )
 //          1  answer ←      {}
-        Posting answer = null ; //new Posting(-1) ;
+        Posting answer = new Posting(-1) ; //new Posting(-1) ;
         Posting last = null;
 //      2 while p1  != NIL and p2  != NIL
         while(pL1 != null && pL2 !=null){
             //  3 do if docID ( p 1 ) = docID ( p2 )
             if(pL1.docId == pL2.docId){
             //  4   then ADD ( answer, docID ( p1 ))
-               // need to be edited! -------------------- answer.add(pL1.docId);
-                if(answer == null){
-                    answer = new Posting(pL1.docId);
-                    last = answer;
+                if(answer.docId == -1){
+                    last = answer.add(pL1.docId);
                 }else{
-                    last.next = new Posting(pL1.docId);
-                    last = last.next;
+                    last = last.add(pL1.docId);
                 }
                 //          5       p1 ← next ( p1 )
                 //          6       p2 ← next ( p2 )
@@ -195,7 +192,7 @@ public class Index5 {
         return answer;
     }
 
-    public String find_24_01(String phrase) { // any mumber of terms non-optimized search 
+    public String find_24_01(String phrase) { // any number of terms non-optimized search
         String result = "";
         String[] words = phrase.split("\\W+");
         int len = words.length;
