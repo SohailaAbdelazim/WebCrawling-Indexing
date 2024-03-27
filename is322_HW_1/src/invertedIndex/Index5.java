@@ -25,7 +25,7 @@ import java.io.PrintWriter;
 public class Index5 {
 
     //--------------------------------------------
-    int N = 0;
+    int N = 0; // number of documents in the collection
     public Map<Integer, SourceRecord> sources;  // store the doc_id and the file name.
 
     public HashMap<String, DictEntry> index; // THe inverted index
@@ -69,6 +69,13 @@ public class Index5 {
     }
  
     //-----------------------------------------------
+
+    /**
+     * Build an index for the given files (documents) stored on disk by reading each file line by line.
+     * For each line, the indexOneLine method is called to index each word.
+     * During that information about each file is added to the sources hashmap.
+     *
+     */
     public void buildIndex(String[] files) {  // from disk not from the internet
         int fid = 1;
         for (String fileName : files) {
@@ -93,7 +100,13 @@ public class Index5 {
         //   printDictionary();
     }
 
-    //----------------------------------------------------------------------------  
+    //----------------------------------------------------------------------------
+    /**
+     * Index each word in a given line of a specific document by tokenizing the line, ignoring stop words,
+     * stemming each word, and updating the index.
+     * Return the number of words in the line.
+     *
+     */
     public int indexOneLine(String ln, int fid) {
         int flen = 0;
 
@@ -135,7 +148,11 @@ public class Index5 {
         return flen;
     }
 
-//----------------------------------------------------------------------------  
+//----------------------------------------------------------------------------
+    /**
+     * Checks if a given word is one of the stop words specified.
+     *
+     */
     boolean stopWord(String word) {
         if (word.equals("the") || word.equals("to") || word.equals("be") || word.equals("for") || word.equals("from") || word.equals("in")
                 || word.equals("a") || word.equals("into") || word.equals("by") || word.equals("or") || word.equals("and") || word.equals("that")) {
@@ -148,7 +165,10 @@ public class Index5 {
 
     }
 //----------------------------------------------------------------------------  
-
+   /**
+    * Return a word in the root form.
+    *
+    */
     String stemWord(String word) { //skip for now
         return word;
 //        Stemmer s = new Stemmer();
@@ -157,25 +177,28 @@ public class Index5 {
 //        return s.toString();
     }
 
-    //----------------------------------------------------------------------------  
+    //----------------------------------------------------------------------------
+
+    /**
+     * Find the common document ids between two posting lists and return them as another posting list.
+     * Assuming that both posting lists are sorted.
+     *
+     */
     Posting intersect(Posting pL1, Posting pL2) {
 ///****  -1-   complete after each comment ****
 //   INTERSECT ( p1 , p2 )
 //          1  answer ←      {}
-        Posting answer = null ; //new Posting(-1) ;
+        Posting answer = new Posting(-1) ; //new Posting(-1) ;
         Posting last = null;
 //      2 while p1  != NIL and p2  != NIL
         while(pL1 != null && pL2 !=null){
             //  3 do if docID ( p 1 ) = docID ( p2 )
             if(pL1.docId == pL2.docId){
             //  4   then ADD ( answer, docID ( p1 ))
-               // need to be edited! -------------------- answer.add(pL1.docId);
-                if(answer == null){
-                    answer = new Posting(pL1.docId);
-                    last = answer;
+                if(answer.docId == -1){
+                    last = answer.add(pL1.docId);
                 }else{
-                    last.next = new Posting(pL1.docId);
-                    last = last.next;
+                    last = last.add(pL1.docId);
                 }
                 //          5       p1 ← next ( p1 )
                 //          6       p2 ← next ( p2 )
@@ -195,7 +218,12 @@ public class Index5 {
         return answer;
     }
 
-    public String find_24_01(String phrase) { // any mumber of terms non-optimized search 
+    /**
+     * Retrieve which documents contain all the words in the given phrase by calling intersect method
+     * on their posting lists.
+     *
+     */
+    public String find_24_01(String phrase) { // any number of terms non-optimized search
         String result = "";
         String[] words = phrase.split("\\W+");
         int len = words.length;
@@ -221,6 +249,13 @@ public class Index5 {
     
     
     //---------------------------------
+    /**
+     * sort the given array of words using bubble sort by looping through the array and comparing
+     * the adjacent words.
+     * If they are out of order (left word > right word), swap them.
+     * Repeat till array is sorted.
+     *
+     */
     String[] sort(String[] words) {  //bubble sort
         boolean sorted = false;
         String sTmp;
@@ -241,7 +276,11 @@ public class Index5 {
     }
 
      //---------------------------------
-
+    /**
+     * Store the information about the documents used to create the index and the index itself
+     * from memory into disk.
+     *
+     */
     public void store(String storageName) {
         try {
             String pathToStorage = "D:\\Faculty\\Year 3\\Term2\\IR\\Assigments\\1\\tmp11\\rl\\"+storageName;
