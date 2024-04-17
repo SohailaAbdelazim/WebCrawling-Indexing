@@ -26,12 +26,12 @@ public class Posting {
         next = null;
     }
 
-    public Posting add(int docId){
-        if (this.docId == -1){
-            this.docId = docId;
-        }
-        next = new Posting(-1);
-        return next;
-
-    }
+//    public Posting add(int docId){
+//        if (this.docId == -1){
+//            this.docId = docId;
+//        }
+//        next = new Posting(-1);
+//        return next;
+//
+//    }
 }

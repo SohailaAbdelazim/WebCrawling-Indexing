@@ -38,7 +38,7 @@ public class Test {
         index.printDictionary();
 
         String test3 = "data  should plain greatest comif"; // data  should plain greatest comif
-        System.out.println("Boo0lean Model result = \n" + index.find_24_01(test3));
+//        System.out.println("Boo0lean Model result = \n" + index.findBiWord(test3));
 
         String phrase = "";
 
@@ -47,7 +47,7 @@ public class Test {
             BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
             phrase = in.readLine();
 /// -3- **** complete here ****
-            System.out.println(index.find_24_01(phrase));
+            System.out.println(index.findBiWord(phrase));
 
         } while (!phrase.isEmpty());
 

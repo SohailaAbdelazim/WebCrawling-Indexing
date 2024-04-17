@@ -12,11 +12,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import static java.lang.Math.log10;
 import static java.lang.Math.sqrt;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
+
+import java.util.*;
 import java.io.PrintWriter;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
 
 /**
  *
@@ -29,11 +32,13 @@ public class Index5 {
     public Map<Integer, SourceRecord> sources;  // store the doc_id and the file name.
 
     public HashMap<String, DictEntry> index; // THe inverted index
+    public HashMap<String, DictEntry> biWordIndex; // THe inverted index
     //--------------------------------------------
 
     public Index5() {
         sources = new HashMap<Integer, SourceRecord>();
         index = new HashMap<String, DictEntry>();
+        biWordIndex = new HashMap<String, DictEntry>();
     }
 
     public void setN(int n) {
@@ -57,7 +62,7 @@ public class Index5 {
 
     //---------------------------------------------
     public void printDictionary() {
-        Iterator it = index.entrySet().iterator();
+        Iterator it = biWordIndex.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             DictEntry dd = (DictEntry) pair.getValue();
@@ -65,7 +70,7 @@ public class Index5 {
             printPostingList(dd.pList);
         }
         System.out.println("------------------------------------------------------");
-        System.out.println("*** Number of terms = " + index.size());
+        System.out.println("*** Number of terms = " + biWordIndex.size());
     }
  
     //-----------------------------------------------
@@ -88,7 +93,7 @@ public class Index5 {
                 while ((ln = file.readLine()) != null) {
                     /// -2- **** complete here ****
                     ///**** hint   flen +=  ________________(ln, fid);
-                    flen +=  indexOneLine(ln, fid);
+                    flen +=  indexOneLineBiWords(ln, fid);
                 }
                 sources.get(fid).length = flen;
 
@@ -97,9 +102,8 @@ public class Index5 {
             }
             fid++;
         }
-        //   printDictionary();
+           printDictionary();
     }
-
     //----------------------------------------------------------------------------
     /**
      * Index each word in a given line of a specific document by tokenizing the line, ignoring stop words,
@@ -148,6 +152,72 @@ public class Index5 {
         return flen;
     }
 
+    public int indexOneLineBiWords(String ln, int fid) {
+        int flen = 0;
+
+        String[] words = ln.split("\\W+");
+        //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+        flen += words.length;
+        String prevWord = "";
+        boolean firstIteration = true;
+        for (String word : words) {
+            word = word.toLowerCase();
+            if (stopWord(word)) {
+                continue;
+            }
+            word = stemWord(word);
+            // check to see if the word is not in the dictionary
+            // if not add it
+            if (!biWordIndex.containsKey(word)) {
+                biWordIndex.put(word, new DictEntry());
+            }
+            if(firstIteration){
+                firstIteration = false;
+                prevWord = word;
+            }
+            else {
+                String combination = prevWord + "_" + word;
+                if(!biWordIndex.containsKey(combination)){
+                    biWordIndex.put(combination, new DictEntry());
+                    // add document id to the posting list
+                    if (!biWordIndex.get(combination).postingListContains(fid)) {
+                        biWordIndex.get(combination).doc_freq += 1; //set doc freq to the number of doc that contain the term
+                        if (biWordIndex.get(combination).pList == null) {
+                            biWordIndex.get(combination).pList = new Posting(fid);
+                            biWordIndex.get(combination).last = biWordIndex.get(combination).pList;
+                        } else {
+                            biWordIndex.get(combination).last.next = new Posting(fid);
+                            biWordIndex.get(combination).last = biWordIndex.get(combination).last.next;
+                        }
+                    } else {
+                        biWordIndex.get(word).last.dtf += 1;
+                    }
+                }
+                prevWord = word;
+            }
+            // add document id to the posting list
+            if (!biWordIndex.get(word).postingListContains(fid)) {
+                biWordIndex.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
+                if (biWordIndex.get(word).pList == null) {
+                    biWordIndex.get(word).pList = new Posting(fid);
+                    biWordIndex.get(word).last = biWordIndex.get(word).pList;
+                } else {
+                    biWordIndex.get(word).last.next = new Posting(fid);
+                    biWordIndex.get(word).last = biWordIndex.get(word).last.next;
+                }
+            } else {
+                biWordIndex.get(word).last.dtf += 1;
+            }
+            //set the term_fteq in the collection
+            biWordIndex.get(word).term_freq += 1;
+            if (word.equalsIgnoreCase("lattice")) {
+
+                System.out.println("  <<" + biWordIndex.get(word).getPosting(1) + ">> " + ln);
+            }
+        }
+        return flen;
+    }
+
 //----------------------------------------------------------------------------
     /**
      * Checks if a given word is one of the stop words specified.
@@ -188,17 +258,20 @@ public class Index5 {
 ///****  -1-   complete after each comment ****
 //   INTERSECT ( p1 , p2 )
 //          1  answer ←      {}
-        Posting answer = new Posting(-1) ; //new Posting(-1) ;
+        Posting answer = null ; //new Posting(-1) ;
         Posting last = null;
 //      2 while p1  != NIL and p2  != NIL
         while(pL1 != null && pL2 !=null){
             //  3 do if docID ( p 1 ) = docID ( p2 )
             if(pL1.docId == pL2.docId){
-            //  4   then ADD ( answer, docID ( p1 ))
-                if(answer.docId == -1){
-                    last = answer.add(pL1.docId);
+                //  4   then ADD ( answer, docID ( p1 ))
+                // need to be edited! -------------------- answer.add(pL1.docId);
+                if(answer == null){
+                    answer = new Posting(pL1.docId);
+                    last = answer;
                 }else{
-                    last = last.add(pL1.docId);
+                    last.next = new Posting(pL1.docId);
+                    last = last.next;
                 }
                 //          5       p1 ← next ( p1 )
                 //          6       p2 ← next ( p2 )
@@ -217,7 +290,6 @@ public class Index5 {
 //      10 return answer
         return answer;
     }
-
     /**
      * Retrieve which documents contain all the words in the given phrase by calling intersect method
      * on their posting lists.
@@ -247,7 +319,56 @@ public class Index5 {
         return result;
     }
     
-    
+     public String findBiWord(String phrase) { // any number of terms non-optimized search
+        String result = "";
+
+        ArrayList <String> words = new ArrayList<>();
+
+        Pattern pattern = Pattern.compile("\"[A-Za-z]+\\s[A-Za-z]+\"");
+        Matcher matcher = pattern.matcher(phrase);
+
+         while(matcher.find()){
+             String biWord = matcher.group();
+
+             String [] singleWords = phrase.split(biWord);
+             phrase = String.join(" " ,singleWords);
+
+             biWord = biWord.substring(1);
+             biWord = biWord.substring(0,biWord.length()-1);
+             biWord = biWord.replace(" ", "_");
+             words.add(biWord);
+         }
+         if(!phrase.isEmpty()){
+             ArrayList<String> temp = new ArrayList<>(Arrays.asList(phrase.split("\\W+")));
+             words.addAll(temp);
+         }
+        for(String word: words){
+            if(word.isEmpty()){
+                words.remove(word);
+            }
+        }
+        int len = words.size();
+
+        //fix this if word is not in the hash table will crash...
+        try{
+        Posting posting = biWordIndex.get(words.get(0).toLowerCase()).pList;
+        int i = 1;
+        while (i < len) {
+            posting = intersect(posting, biWordIndex.get(words.get(i).toLowerCase()).pList);
+            i++;
+        }
+        while (posting != null) {
+            //System.out.println("\t" + sources.get(num));
+            result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
+            posting = posting.next;
+        }
+        } catch (Exception e) {
+            System.out.println("This phrase isn't exist");
+        }
+        return result;
+    }
+
+
     //---------------------------------
     /**
      * sort the given array of words using bubble sort by looping through the array and comparing
@@ -283,7 +404,7 @@ public class Index5 {
      */
     public void store(String storageName) {
         try {
-            String pathToStorage = "D:\\Faculty\\Year 3\\Term2\\IR\\Assigments\\1\\tmp11\\rl\\"+storageName;
+            String pathToStorage = "tmp11\\rl\\"+storageName;
             Writer wr = new FileWriter(pathToStorage);
             for (Map.Entry<Integer, SourceRecord> entry : sources.entrySet()) {
                 System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue().URL + ", Value = " + entry.getValue().title + ", Value = " + entry.getValue().text);
@@ -296,7 +417,7 @@ public class Index5 {
             }
             wr.write("section2" + "\n");
 
-            Iterator it = index.entrySet().iterator();
+            Iterator it = biWordIndex.entrySet().iterator();
             while (it.hasNext()) {
                 Map.Entry pair = (Map.Entry) it.next();
                 DictEntry dd = (DictEntry) pair.getValue();
