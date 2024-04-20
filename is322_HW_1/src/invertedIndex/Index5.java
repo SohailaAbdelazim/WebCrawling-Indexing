@@ -32,13 +32,16 @@ public class Index5 {
     public Map<Integer, SourceRecord> sources;  // store the doc_id and the file name.
 
     public HashMap<String, DictEntry> index; // THe inverted index
-    public HashMap<String, DictEntry> biWordIndex; // THe inverted index
+    public HashMap<String, DictEntry> biWordIndex; // THe bi word index
+    public HashMap<String, DictEntry> positionalIndex; // THe positional index
+
     //--------------------------------------------
 
     public Index5() {
         sources = new HashMap<Integer, SourceRecord>();
         index = new HashMap<String, DictEntry>();
         biWordIndex = new HashMap<String, DictEntry>();
+        positionalIndex = new HashMap<String,DictEntry>();
     }
 
     public void setN(int n) {
@@ -59,10 +62,42 @@ public class Index5 {
         System.out.print(p.docId);
         System.out.println("]");
     }
+    public void printPositionalList(Posting p) {
+        // Iterator<Integer> it2 = hset.iterator();
+        System.out.print("[");
+
+        while (p.next != null) {
+            /// -4- **** complete here ****
+            System.out.print("" + p.docId +":" );
+            System.out.print("(");
+
+            for (int i =0 ; i <p.positions.size()-1; i++){
+
+                System.out.print(p.positions.get(i)+ "," );
+            }
+            System.out.print(p.positions.get(p.positions.size()-1));
+            System.out.println(")");
+
+            p = p.next;
+        }
+        // fix get rid of the last comma
+        System.out.print(p.docId + ":");
+        System.out.print("(");
+
+        for (int i =0 ; i <p.positions.size()-1; i++){
+
+            System.out.print(p.positions.get(i)+ "," );
+        }
+
+        System.out.print(p.positions.get(p.positions.size()-1));
+        System.out.print(")");
+
+        System.out.println("]");
+    }
 
     //---------------------------------------------
-    public void printDictionary() {
-        Iterator it = biWordIndex.entrySet().iterator();
+    public void printDictionary(HashMap<String,DictEntry> index) {
+        Iterator it = index.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             DictEntry dd = (DictEntry) pair.getValue();
@@ -70,9 +105,28 @@ public class Index5 {
             printPostingList(dd.pList);
         }
         System.out.println("------------------------------------------------------");
-        System.out.println("*** Number of terms = " + biWordIndex.size());
+        System.out.println("*** Number of terms = " + index.size());
+
     }
- 
+
+    public void printPositionalDictionary(HashMap<String,DictEntry> index) {
+        Iterator it = index.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry) it.next();
+            DictEntry dd = (DictEntry) pair.getValue();
+            System.out.print("** [" + pair.getKey() + "," + dd.doc_freq + "]       =--> ");
+            printPositionalList(dd.pList);
+            System.out.print("\n");
+
+        }
+        System.out.println("------------------------------------------------------");
+        System.out.println("*** Number of terms = " + index.size());
+
+    }
+
+
+
+
     //-----------------------------------------------
 
     /**
@@ -102,7 +156,31 @@ public class Index5 {
             }
             fid++;
         }
-           printDictionary();
+//           printDictionary();
+    }
+
+    public void buildPositionalIndex(String[] files) {  // from disk not from the internet
+        int fid = 1;
+        for (String fileName : files) {
+            try (BufferedReader file = new BufferedReader(new FileReader(fileName))) {
+                if (!sources.containsKey(fileName)) {
+                    sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
+                }
+                String ln;
+                int flen = 0;
+                while ((ln = file.readLine()) != null) {
+                    /// -2- **** complete here ****
+                    ///**** hint   flen +=  ________________(ln, fid);
+                    flen +=  indexOneLinePositional(ln, fid,flen);
+                }
+                sources.get(fid).length = flen;
+
+            } catch (IOException e) {
+                System.out.println("File " + fileName + " not found. Skip it");
+            }
+            fid++;
+        }
+//        printDictionary();
     }
     //----------------------------------------------------------------------------
     /**
@@ -217,7 +295,52 @@ public class Index5 {
         }
         return flen;
     }
+//----------------------------------------------------------------------------
+    public int indexOneLinePositional(String ln, int fid, int position) {
 
+        int flen = 0;
+
+        String[] words = ln.split("\\W+");
+        //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+        flen += words.length;
+        int currentPosition = position;
+        boolean firstIteration = true;
+        for (String word : words) {
+            word = word.toLowerCase();
+            if (stopWord(word)) {
+                continue;
+            }
+            word = stemWord(word);
+            // check to see if the word is not in the dictionary
+            // if not add it
+            if (!positionalIndex.containsKey(word)) {
+                positionalIndex.put(word, new DictEntry());
+            }
+
+            // add document id to the posting list
+            if (!positionalIndex.get(word).postingListContains(fid)) {
+                positionalIndex.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
+                if (positionalIndex.get(word).pList == null) {
+                    positionalIndex.get(word).pList = new Posting(fid);
+                    positionalIndex.get(word).last = positionalIndex.get(word).pList;
+                } else {
+                    positionalIndex.get(word).last.next = new Posting(fid);
+                    positionalIndex.get(word).last = positionalIndex.get(word).last.next;
+                }
+            } else {
+                positionalIndex.get(word).last.dtf += 1;
+            }
+            positionalIndex.get(word).last.addPosition(currentPosition);
+            //set the term_fteq in the collection
+            positionalIndex.get(word).term_freq += 1;
+            if (word.equalsIgnoreCase("lattice")) {
+
+                System.out.println("  <<" + positionalIndex.get(word).getPosting(1) + ">> " + ln);
+            }
+            currentPosition++;
+        }
+        return flen;
+    }
 //----------------------------------------------------------------------------
     /**
      * Checks if a given word is one of the stop words specified.
@@ -290,6 +413,47 @@ public class Index5 {
 //      10 return answer
         return answer;
     }
+    //---------------------------------------------------------------------------------
+
+    Posting positionalIntersect(Posting pL1, Posting pL2) {
+///****  -1-   complete after each comment ****
+//   INTERSECT ( p1 , p2 )
+//          1  answer ←      {}
+        Posting answer = null ; //new Posting(-1) ;
+        Posting last = null;
+//      2 while p1  != NIL and p2  != NIL
+        while(pL1 != null && pL2 !=null){
+            //  3 do if docID ( p 1 ) = docID ( p2 )
+            if(pL1.docId == pL2.docId){
+                //  4   then ADD ( answer, docID ( p1 ))
+                // need to be edited! -------------------- answer.add(pL1.docId);
+                if(answer == null){
+                    answer = new Posting(pL1.docId);
+                    last = answer;
+                }else{
+                    last.next = new Posting(pL1.docId);
+                    last = last.next;
+                }
+                //          5       p1 ← next ( p1 )
+                //          6       p2 ← next ( p2 )
+                pL1 = pL1.next;
+                pL2 = pL2.next;
+                //          7   else if docID ( p1 ) < docID ( p2 )
+            }else if(pL1.docId < pL2.docId) {
+                //          8        then p1 ← next ( p1 )
+                pL1 = pL1.next;
+            }else{
+                //          9        else p2 ← next ( p2 )
+                pL2 = pL2.next;
+            }
+
+        }
+//      10 return answer
+        return answer;
+    }
+
+    //---------------------------------------------------------------------------------
+
     /**
      * Retrieve which documents contain all the words in the given phrase by calling intersect method
      * on their posting lists.
@@ -318,7 +482,7 @@ public class Index5 {
         }
         return result;
     }
-    
+
      public String findBiWord(String phrase) { // any number of terms non-optimized search
         String result = "";
 
@@ -368,7 +532,29 @@ public class Index5 {
         return result;
     }
 
+    public String findPositional(String phrase) { // any number of terms non-optimized search
+        String result = "";
+        String[] words = phrase.split("\\W+");
+        int len = words.length;
 
+        //fix this if word is not in the hash table will crash...
+        try{
+            Posting posting = positionalIndex.get(words[0].toLowerCase()).pList;
+            int i = 1;
+            while (i < len) {
+                posting = positionalIntersect(posting, positionalIndex.get(words[i].toLowerCase()).pList);
+                i++;
+            }
+            while (posting != null) {
+                //System.out.println("\t" + sources.get(num));
+                result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
+                posting = posting.next;
+            }
+        } catch (Exception e) {
+            System.out.println("This phrase isn't in the collection! Please try another phrase.");
+        }
+        return result;
+    }
     //---------------------------------
     /**
      * sort the given array of words using bubble sort by looping through the array and comparing
@@ -402,7 +588,7 @@ public class Index5 {
      * from memory into disk.
      *
      */
-    public void store(String storageName) {
+    public void store(String storageName,HashMap<String,DictEntry> index) {
         try {
             String pathToStorage = "tmp11\\rl\\"+storageName;
             Writer wr = new FileWriter(pathToStorage);
@@ -417,7 +603,7 @@ public class Index5 {
             }
             wr.write("section2" + "\n");
 
-            Iterator it = biWordIndex.entrySet().iterator();
+            Iterator it = index.entrySet().iterator();
             while (it.hasNext()) {
                 Map.Entry pair = (Map.Entry) it.next();
                 DictEntry dd = (DictEntry) pair.getValue();

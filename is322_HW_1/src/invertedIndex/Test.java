@@ -33,23 +33,26 @@ public class Test {
         for (int i = 0; i < fileList.length; i++) {
             fileList[i] = files + fileList[i];
         }
-        index.buildIndex(fileList);
-        index.store("index");
-        index.printDictionary();
+       // index.buildIndex(fileList);
+        index.buildPositionalIndex(fileList);
+        index.store("index",index.positionalIndex);
+        index.printPositionalDictionary(index.positionalIndex);
 
         String test3 = "data  should plain greatest comif"; // data  should plain greatest comif
 //        System.out.println("Boo0lean Model result = \n" + index.findBiWord(test3));
 
         String phrase = "";
 
-        do {
-            System.out.println("Print search phrase: \n");
-            BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-            phrase = in.readLine();
-/// -3- **** complete here ****
-            System.out.println(index.findBiWord(phrase));
+//        do {
+//            System.out.println("Print search phrase: \n");
+//            BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+//            phrase = in.readLine();
+///// -3- **** complete here ****
+//            System.out.println(index.findBiWord(phrase));
+//
+//        } while (!phrase.isEmpty());
+//
 
-        } while (!phrase.isEmpty());
 
     }
 }
