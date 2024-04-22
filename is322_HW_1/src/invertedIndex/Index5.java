@@ -4,17 +4,12 @@
  */
 package invertedIndex;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.Writer;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
+
 import static java.lang.Math.log10;
 import static java.lang.Math.sqrt;
 
 import java.util.*;
-import java.io.PrintWriter;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -136,6 +131,30 @@ public class Index5 {
      *
      */
     public void buildIndex(String[] files) {  // from disk not from the internet
+        int fid = 1;
+        for (String fileName : files) {
+            try (BufferedReader file = new BufferedReader(new FileReader(fileName))) {
+                if (!sources.containsKey(fileName)) {
+                    sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
+                }
+                String ln;
+                int flen = 0;
+                while ((ln = file.readLine()) != null) {
+                    /// -2- **** complete here ****
+                    ///**** hint   flen +=  ________________(ln, fid);
+                    flen +=  indexOneLine(ln, fid);
+                }
+                sources.get(fid).length = flen;
+
+            } catch (IOException e) {
+                System.out.println("File " + fileName + " not found. Skip it");
+            }
+            fid++;
+        }
+//           printDictionary();
+    }
+
+    public void buildBiwordIndex(String[] files) {  // from disk not from the internet
         int fid = 1;
         for (String fileName : files) {
             try (BufferedReader file = new BufferedReader(new FileReader(fileName))) {
@@ -307,9 +326,7 @@ public class Index5 {
         boolean firstIteration = true;
         for (String word : words) {
             word = word.toLowerCase();
-            if (stopWord(word)) {
-                continue;
-            }
+
             word = stemWord(word);
             // check to see if the word is not in the dictionary
             // if not add it
@@ -415,40 +432,66 @@ public class Index5 {
     }
     //---------------------------------------------------------------------------------
 
-    Posting positionalIntersect(Posting pL1, Posting pL2) {
-///****  -1-   complete after each comment ****
-//   INTERSECT ( p1 , p2 )
-//          1  answer ←      {}
-        Posting answer = null ; //new Posting(-1) ;
+    Posting positionalIntersect(Posting pL1, Posting pL2, int k) {
+
+        Posting answer = null ;
         Posting last = null;
-//      2 while p1  != NIL and p2  != NIL
+        // iterate through both given posting lists
         while(pL1 != null && pL2 !=null){
-            //  3 do if docID ( p 1 ) = docID ( p2 )
+            // check the common document
             if(pL1.docId == pL2.docId){
-                //  4   then ADD ( answer, docID ( p1 ))
-                // need to be edited! -------------------- answer.add(pL1.docId);
-                if(answer == null){
-                    answer = new Posting(pL1.docId);
-                    last = answer;
-                }else{
-                    last.next = new Posting(pL1.docId);
-                    last = last.next;
+                ArrayList<Integer> pp1 = pL1.positions;
+                ArrayList<Integer> pp2 = pL2.positions;
+
+                // iterate on positions of the common document
+                int i = 0, j = 0;
+                while(i < pp1.size() && j < pp2.size()){
+                    // in case the terms are consequent and appear in the same order
+                    if(pp2.get(j) - pp1.get(i) == k){
+                        // answer is not initialized yet
+                        if(answer == null){
+                            answer = new Posting(pL2.docId);
+                            answer.addPosition(pp2.get(j));
+                            last = answer;
+                        }
+                        else {
+                            // found another position in the same document
+                            if(pL1.docId == last.docId){
+                                last.addPosition(pp2.get(j));
+                            }
+                            // found the first position in new document
+                            else {
+                                last.next = new Posting(pL2.docId);
+                                last.next.addPosition(pp2.get(j));
+                                last = last.next;
+                            }
+                        }
+
+                        i++;
+                        j++;
+                    }
+                    // in case they appear in right order, but they are not consequent
+                    else if(pp1.get(i) < pp2.get(j)){
+                        i++;
+                    }
+                    // in case of reverse order
+                    else {
+                        j++;
+                    }
+
                 }
-                //          5       p1 ← next ( p1 )
-                //          6       p2 ← next ( p2 )
+
                 pL1 = pL1.next;
                 pL2 = pL2.next;
-                //          7   else if docID ( p1 ) < docID ( p2 )
-            }else if(pL1.docId < pL2.docId) {
-                //          8        then p1 ← next ( p1 )
+
+            } else if(pL1.docId < pL2.docId) {
                 pL1 = pL1.next;
-            }else{
-                //          9        else p2 ← next ( p2 )
+            } else{
                 pL2 = pL2.next;
             }
 
         }
-//      10 return answer
+
         return answer;
     }
 
@@ -542,7 +585,7 @@ public class Index5 {
             Posting posting = positionalIndex.get(words[0].toLowerCase()).pList;
             int i = 1;
             while (i < len) {
-                posting = positionalIntersect(posting, positionalIndex.get(words[i].toLowerCase()).pList);
+                posting = positionalIntersect(posting, positionalIndex.get(words[i].toLowerCase()).pList, 1);
                 i++;
             }
             while (posting != null) {
@@ -590,7 +633,8 @@ public class Index5 {
      */
     public void store(String storageName,HashMap<String,DictEntry> index) {
         try {
-            String pathToStorage = "tmp11\\rl\\"+storageName;
+            String separator = File.separator;
+            String pathToStorage = "tmp11" + separator + "rl" + separator + "storageName";
             Writer wr = new FileWriter(pathToStorage);
             for (Map.Entry<Integer, SourceRecord> entry : sources.entrySet()) {
                 System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue().URL + ", Value = " + entry.getValue().title + ", Value = " + entry.getValue().text);

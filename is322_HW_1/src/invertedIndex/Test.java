@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Scanner;
 
 /**
  *
@@ -20,7 +21,8 @@ public class Test {
         //|**  change it to your collection directory 
         //|**  in windows "C:\\tmp11\\rl\\collection\\"       
        // String files = "/home/ehab/tmp11/rl/collection/";
-        String files = "tmp11\\rl\\collection\\";
+        String separator = File.separator;
+        String files = "tmp11" + separator + "rl" + separator + "collection" + separator;
 
         File file = new File(files);
         //|** String[] 	list()
@@ -33,26 +35,57 @@ public class Test {
         for (int i = 0; i < fileList.length; i++) {
             fileList[i] = files + fileList[i];
         }
-       // index.buildIndex(fileList);
-        index.buildPositionalIndex(fileList);
-        index.store("index",index.positionalIndex);
-        index.printPositionalDictionary(index.positionalIndex);
 
-        String test3 = "data  should plain greatest comif"; // data  should plain greatest comif
-//        System.out.println("Boo0lean Model result = \n" + index.findBiWord(test3));
+        while(true){
+            System.out.println("Welcome! Which type of index you want to process your query?");
+            System.out.println("1_ Inverted index");
+            System.out.println("2_ Biword index");
+            System.out.println("3_ Positional index");
+            System.out.println("Press any number to Exit");
 
-        String phrase = "";
+            Scanner scanner = new Scanner(System.in);
+            int choice = scanner.nextInt();
 
-//        do {
-//            System.out.println("Print search phrase: \n");
-//            BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-//            phrase = in.readLine();
-///// -3- **** complete here ****
-//            System.out.println(index.findBiWord(phrase));
-//
-//        } while (!phrase.isEmpty());
-//
 
+            if(choice == 1){
+                index.buildIndex(fileList);
+                index.store("index",index.index);
+                index.printDictionary(index.index);
+
+                String phrase = "";
+                System.out.println("Print search phrase: \n");
+                BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+                phrase = in.readLine();
+
+                System.out.println(index.find_24_01(phrase));
+            } else if(choice == 2){
+                index.buildBiwordIndex(fileList);
+                index.store("index",index.biWordIndex);
+                index.printDictionary(index.biWordIndex);
+
+                String phrase = "";
+                System.out.println("Print search phrase: \n");
+                BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+                phrase = in.readLine();
+
+                System.out.println(index.findBiWord(phrase));
+            } else if (choice == 3){
+                index.buildPositionalIndex(fileList);
+                index.store("index",index.positionalIndex);
+                index.printPositionalDictionary(index.positionalIndex);
+
+                String phrase = "";
+                System.out.println("Print search phrase: \n");
+                BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+                phrase = in.readLine();
+
+                System.out.println(index.findPositional(phrase));
+            } else {
+                break;
+            }
+
+
+        }
 
     }
 }
