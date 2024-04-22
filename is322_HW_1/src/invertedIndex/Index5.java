@@ -154,23 +154,32 @@ public class Index5 {
 //           printDictionary();
     }
 
+    /**
+     * Builds a biword index for the given files (documents) stored on disk by reading each file line by line.
+     * For each line, the indexOneLineBiWords method is called to index pairs of consecutive words (biwords) as a single unit.
+     * During this process, file-specific information such as file name and total length of all biwords indexed is tracked and
+     * stored in the sources hashmap.
+     */
     public void buildBiwordIndex(String[] files) {  // from disk not from the internet
         int fid = 1;
         for (String fileName : files) {
             try (BufferedReader file = new BufferedReader(new FileReader(fileName))) {
+                // If the file is not already indexed, create a record for it
                 if (!sources.containsKey(fileName)) {
                     sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
                 }
-                String ln;
-                int flen = 0;
+                String ln; // Holds the current line from the file
+                int flen = 0; // Total length of indexed biwords in this file
                 while ((ln = file.readLine()) != null) {
                     /// -2- **** complete here ****
                     ///**** hint   flen +=  ________________(ln, fid);
+                    // Index biwords in the line and accumulate their count
                     flen +=  indexOneLineBiWords(ln, fid);
                 }
+                // After processing the file, update the total length of indexed biwords
                 sources.get(fid).length = flen;
 
-            } catch (IOException e) {
+            } catch (IOException e) {   // Handle files that cannot be found or read
                 System.out.println("File " + fileName + " not found. Skip it");
             }
             fid++;
@@ -178,23 +187,32 @@ public class Index5 {
 //           printDictionary();
     }
 
+    /**
+     * Builds a positional index for the given files (documents) stored on disk by reading each file line by line.
+     * For each line, the indexOneLinePositional method is called to index each word along with its position within the file.
+     * This allows the index to not only store the occurrence of words but also their specific positions.
+     * Each file's specific information, such as its identifier and the total count of words indexed, is maintained in the sources hashmap.
+     */
     public void buildPositionalIndex(String[] files) {  // from disk not from the internet
         int fid = 1;
         for (String fileName : files) {
             try (BufferedReader file = new BufferedReader(new FileReader(fileName))) {
+                // Check if the file is already indexed, if not, create a new record
                 if (!sources.containsKey(fileName)) {
                     sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
                 }
-                String ln;
-                int flen = 0;
+                String ln;  // Holds the current line from the file
+                int flen = 0;  // Tracks the cumulative number of words indexed in this file
                 while ((ln = file.readLine()) != null) {
                     /// -2- **** complete here ****
                     ///**** hint   flen +=  ________________(ln, fid);
+                    // Index words in the line with their position and update the word count
                     flen +=  indexOneLinePositional(ln, fid,flen);
                 }
+                // Update the total number of words indexed for this file in the source record
                 sources.get(fid).length = flen;
 
-            } catch (IOException e) {
+            } catch (IOException e) {  // If the file is not found, log the error and continue with the next file
                 System.out.println("File " + fileName + " not found. Skip it");
             }
             fid++;
@@ -249,33 +267,39 @@ public class Index5 {
         return flen;
     }
 
+    /**
+     * Index each pair of consecutive words (biwords) in a given line of a specific document by tokenizing the line,
+     * ignoring stop words, stemming each word, and updating the biword index. Biwords are formed by concatenating two
+     * consecutive words separated by an underscore. Each new biword and individual word is added to the index if not
+     * already present. This function also updates document frequency and term frequency for each biword and word.
+     * Returns the count of words processed in the line.
+     */
     public int indexOneLineBiWords(String ln, int fid) {
         int flen = 0;
 
-        String[] words = ln.split("\\W+");
-        //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+        String[] words = ln.split("\\W+"); // Split line into words
         flen += words.length;
-        String prevWord = "";
-        boolean firstIteration = true;
+        String prevWord = ""; // Holds the previous word to form biwords
+        boolean firstIteration = true; // Flag to check if it's the first word of the line
         for (String word : words) {
             word = word.toLowerCase();
-            if (stopWord(word)) {
+            if (stopWord(word)) { // Ignore stop words
                 continue;
             }
-            word = stemWord(word);
+            word = stemWord(word); // Apply stemming to reduce word to its base form
             // check to see if the word is not in the dictionary
             // if not add it
             if (!biWordIndex.containsKey(word)) {
                 biWordIndex.put(word, new DictEntry());
             }
             if(firstIteration){
-                firstIteration = false;
+                firstIteration = false; // Update flag after first word is processed
                 prevWord = word;
             }
             else {
                 String combination = prevWord + "_" + word;
                 if(!biWordIndex.containsKey(combination)){
-                    biWordIndex.put(combination, new DictEntry());
+                    biWordIndex.put(combination, new DictEntry()); // Add biword to index if not present
                     // add document id to the posting list
                     if (!biWordIndex.get(combination).postingListContains(fid)) {
                         biWordIndex.get(combination).doc_freq += 1; //set doc freq to the number of doc that contain the term
@@ -287,10 +311,10 @@ public class Index5 {
                             biWordIndex.get(combination).last = biWordIndex.get(combination).last.next;
                         }
                     } else {
-                        biWordIndex.get(word).last.dtf += 1;
+                        biWordIndex.get(word).last.dtf += 1; // Increment term frequency in document
                     }
                 }
-                prevWord = word;
+                prevWord = word; // Update previous word for next biword formation
             }
             // add document id to the posting list
             if (!biWordIndex.get(word).postingListContains(fid)) {
@@ -305,9 +329,9 @@ public class Index5 {
             } else {
                 biWordIndex.get(word).last.dtf += 1;
             }
-            //set the term_fteq in the collection
-            biWordIndex.get(word).term_freq += 1;
-            if (word.equalsIgnoreCase("lattice")) {
+            biWordIndex.get(word).term_freq += 1;  // Increment overall term frequency
+
+            if (word.equalsIgnoreCase("lattice")) { // Special case
 
                 System.out.println("  <<" + biWordIndex.get(word).getPosting(1) + ">> " + ln);
             }
@@ -315,38 +339,45 @@ public class Index5 {
         return flen;
     }
 //----------------------------------------------------------------------------
+
+    /**
+     * Indexes each word in a given line of a specific document by tokenizing the line, converting words to lowercase,
+     * applying stemming, and updating a positional index. Each word's entry in the index includes its positions within the document,
+     * This function also checks and updates the dictionary for each word, adds to the posting list,
+     * updates document frequency, term frequency, and specific positions for each occurrence of the word.
+     */
     public int indexOneLinePositional(String ln, int fid, int position) {
 
         int flen = 0;
 
-        String[] words = ln.split("\\W+");
-        //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+        String[] words = ln.split("\\W+"); // Split the line into words
         flen += words.length;
-        int currentPosition = position;
+        int currentPosition = position; // Track the position of each word in the document
         boolean firstIteration = true;
         for (String word : words) {
             word = word.toLowerCase();
 
-            word = stemWord(word);
-            // check to see if the word is not in the dictionary
-            // if not add it
+            word = stemWord(word); // Apply stemming to reduce the word to its base form
+
+            // Ensure each word is in the positional index
             if (!positionalIndex.containsKey(word)) {
                 positionalIndex.put(word, new DictEntry());
             }
 
-            // add document id to the posting list
+            // Add document ID to the posting list and handle positions
             if (!positionalIndex.get(word).postingListContains(fid)) {
                 positionalIndex.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
                 if (positionalIndex.get(word).pList == null) {
-                    positionalIndex.get(word).pList = new Posting(fid);
+                    positionalIndex.get(word).pList = new Posting(fid);  // Create a new posting if none exists
                     positionalIndex.get(word).last = positionalIndex.get(word).pList;
                 } else {
-                    positionalIndex.get(word).last.next = new Posting(fid);
+                    positionalIndex.get(word).last.next = new Posting(fid); // Otherwise, append to the existing posting list
                     positionalIndex.get(word).last = positionalIndex.get(word).last.next;
                 }
             } else {
                 positionalIndex.get(word).last.dtf += 1;
             }
+            // Add the current word position to the posting
             positionalIndex.get(word).last.addPosition(currentPosition);
             //set the term_fteq in the collection
             positionalIndex.get(word).term_freq += 1;
@@ -354,7 +385,7 @@ public class Index5 {
 
                 System.out.println("  <<" + positionalIndex.get(word).getPosting(1) + ">> " + ln);
             }
-            currentPosition++;
+            currentPosition++; // Move to the next word position
         }
         return flen;
     }
@@ -432,8 +463,12 @@ public class Index5 {
     }
     //---------------------------------------------------------------------------------
 
+    /**
+     * Find common document IDs between two posting lists where the terms appear within a specified distance `k` of each other.
+     * Both posting lists are assumed to be sorted. The function also checks for the exact position of the terms relative to
+     * each other, only including those that meet the specified positional criteria in the returned posting list.
+     */
     Posting positionalIntersect(Posting pL1, Posting pL2, int k) {
-
         Posting answer = null ;
         Posting last = null;
         // iterate through both given posting lists
@@ -466,7 +501,6 @@ public class Index5 {
                                 last = last.next;
                             }
                         }
-
                         i++;
                         j++;
                     }
@@ -478,20 +512,15 @@ public class Index5 {
                     else {
                         j++;
                     }
-
                 }
-
                 pL1 = pL1.next;
                 pL2 = pL2.next;
-
             } else if(pL1.docId < pL2.docId) {
                 pL1 = pL1.next;
             } else{
                 pL2 = pL2.next;
             }
-
         }
-
         return answer;
     }
 
@@ -526,6 +555,13 @@ public class Index5 {
         return result;
     }
 
+    /**
+     * Retrieve which documents contain all biwords and individual words in the given phrase by calling the intersect method
+     * on their posting lists. Biwords are specified in double quotes, and individual words are separated by whitespace.
+     * This function first extracts all biwords and single words from the phrase, then uses the intersect method to find
+     * documents containing all specified terms.
+     * It handles cases where terms are not in the index to prevent crashes.
+     */
      public String findBiWord(String phrase) { // any number of terms non-optimized search
         String result = "";
 
@@ -575,6 +611,11 @@ public class Index5 {
         return result;
     }
 
+    /**
+     * Retrieves documents containing all the words in the given phrase with each word immediately following the previous word.
+     * The function splits the phrase into individual words, then uses the positionalIntersect method to find intersections
+     * of posting lists where words are positioned consecutively.
+     */
     public String findPositional(String phrase) { // any number of terms non-optimized search
         String result = "";
         String[] words = phrase.split("\\W+");
