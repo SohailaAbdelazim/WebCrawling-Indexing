@@ -39,7 +39,7 @@ public class Test {
         while(true){
             System.out.println("Welcome! Which type of index you want to process your query?");
             System.out.println("1_ Inverted index");
-            System.out.println("2_ Biword index");
+            System.out.println("2_ Biword index/mix ");
             System.out.println("3_ Positional index");
             System.out.println("Press any number to Exit");
 
@@ -64,7 +64,7 @@ public class Test {
                 index.printDictionary(index.biWordIndex);
 
                 String phrase = "";
-                System.out.println("Print search phrase: \n");
+                System.out.println("Print search phrase: \nplease enter words separated by space or within \" \" for Biword search:");
                 BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
                 phrase = in.readLine();
 
