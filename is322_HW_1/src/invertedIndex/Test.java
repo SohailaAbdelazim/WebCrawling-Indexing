@@ -4,10 +4,14 @@
  */
 package invertedIndex;
 
+import crawler.WebCrawlerWithDepth;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 /**
@@ -41,11 +45,19 @@ public class Test {
             System.out.println("1_ Inverted index");
             System.out.println("2_ Biword index/mix ");
             System.out.println("3_ Positional index");
+            System.out.println("4_ WebCrawler");
             System.out.println("Press any number to Exit");
-
+            int choice = 0;
             Scanner scanner = new Scanner(System.in);
-            int choice = scanner.nextInt();
+            try {
+                choice = scanner.nextInt();
 
+            }
+            catch (Exception e)
+            {
+                System.out.println("Invalid input!");
+                continue;
+            }
 
             if(choice == 1){
                 index.buildIndex(fileList);
@@ -75,16 +87,33 @@ public class Test {
                 index.printPositionalDictionary(index.positionalIndex);
 
                 String phrase = "";
-                System.out.println("Print search phrase: \n");
+                System.out.println("Enter search phrase: \n");
                 BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
                 phrase = in.readLine();
 
                 System.out.println(index.findPositional(phrase));
+            } else if (choice == 4){
+                WebCrawlerWithDepth wc = new WebCrawlerWithDepth();
+
+                index = wc.initialize("https://en.wikipedia.org/wiki/List_of_pharaohs"); //   ukraine
+                index.printDictionary(index.index);
+
+                String phrase = "";
+                System.out.println("Enter search phrase: \n");
+                BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+                phrase = in.readLine();
+
+                System.out.println(index.find_24_01(phrase)); //"narmer giza pyramid"
+
+                List<Map.Entry<Integer, Double>> top10 = wc.computeScores(phrase, index);
+                System.out.println("Top " + 10 + " entries:");
+                for (Map.Entry<Integer, Double> entry : top10) {
+                    System.out.println("Page Title: " + index.sources.get(entry.getKey()).title + ", score: " + entry.getValue());
+                }
+                System.out.println();
             } else {
                 break;
             }
-
-
         }
 
     }

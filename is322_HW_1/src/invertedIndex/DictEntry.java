@@ -14,7 +14,7 @@ public class DictEntry {
     public int term_freq = 0; //number of times the term is mentioned in the collection
 //=====================================================================
     //public HashSet<Integer> postingList;
-    Posting pList = null;
+public Posting pList = null;
     Posting last = null;
 //------------------------------------------------
 

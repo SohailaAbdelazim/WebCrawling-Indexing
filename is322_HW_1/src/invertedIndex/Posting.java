@@ -14,11 +14,9 @@ import java.util.ArrayList;
 public class Posting {
 
     public Posting next;
-    int docId;
-    int dtf = 1;
+    public int docId;
+    public int dtf = 1;
     ArrayList<Integer> positions;
-
-
 
     Posting(int id, int t) {
         docId = id;

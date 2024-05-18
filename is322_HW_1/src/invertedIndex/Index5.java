@@ -219,6 +219,18 @@ public class Index5 {
         }
 //        printDictionary();
     }
+    public void buildIndexCrawler(int fid, String text) {  // from disk not from the internet
+
+        String[] lines = text.split("\\R+");
+        int flen = 0;
+
+        for(String ln: lines) {
+            /// -2- **** complete here ****
+            ///**** hint   flen +=  ________________(ln, fid);
+            flen +=  indexOneLine(ln, fid);
+        }
+        sources.get(fid).length = flen;
+    }
     //----------------------------------------------------------------------------
     /**
      * Index each word in a given line of a specific document by tokenizing the line, ignoring stop words,
@@ -678,7 +690,7 @@ public class Index5 {
             String pathToStorage = "tmp11" + separator + "rl" + separator + "storageName";
             Writer wr = new FileWriter(pathToStorage);
             for (Map.Entry<Integer, SourceRecord> entry : sources.entrySet()) {
-                System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue().URL + ", Value = " + entry.getValue().title + ", Value = " + entry.getValue().text);
+//                System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue().URL + ", Value = " + entry.getValue().title + ", Value = " + entry.getValue().text);
                 wr.write(entry.getKey().toString() + ",");
                 wr.write(entry.getValue().URL.toString() + ",");
                 wr.write(entry.getValue().title.replace(',', '~') + ",");
@@ -787,11 +799,8 @@ public class Index5 {
         return index;
     }
 
-    public void find_07a(String narmerGizaPyramid) {
-    }
 
-    public void searchLoop() {
-    }
+
 }
 
 //=====================================================================

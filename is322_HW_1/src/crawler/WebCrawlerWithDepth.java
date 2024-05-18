@@ -4,6 +4,7 @@ package crawler;
  *
  * @author ehab
  */
+import invertedIndex.Posting;
 import invertedIndex.SourceRecord;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -11,9 +12,9 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
+
+import static java.lang.Math.log10;
 //==============================================================================
 
 public class WebCrawlerWithDepth {
@@ -56,14 +57,14 @@ public class WebCrawlerWithDepth {
         return pAcc;
     }
 //==============================================================================
-
+//    Recursive function on the URLs until reach the max depth
     public void getPageLinks(String URL, int depth, invertedIndex.Index5 index) {
        System.out.println("|| URL: [" + URL + "] --------  depth: " + depth + " fid=" + fid + " plinks=" + plinks + "\t|||| ");
 
         if ((!(links.contains(URL)))
                 && (depth < MAX_DEPTH)
                 && (fid < max_docs)
-                //        && ((depth == 1) || (plinks < (MAX_PER_PAGE * (depth + 1))))
+                        && ((depth == 1) || (plinks < (MAX_PER_PAGE * (depth + 1))))
                 && ((depth == 0)
                 || ((depth == 1) && (plinks < ((MAX_PER_PAGE) + 290)))
                 || (plinks < ((MAX_PER_PAGE * (depth + 1)) - (plinks / 2))))
@@ -85,50 +86,54 @@ public class WebCrawlerWithDepth {
                 && (!URL.isEmpty())
                 && (!URL.contains("Main_Page"))
                 && (!URL.contains("mw-head"))) {
-         //   try {
+            try {
                 //??????------------------------------------------------------------------------                
-                // *** 1-  add this URL tl the  visited list
-                //                links.add(URL);
+                // *** 1-  add this URL to the  visited list
+                                links.add(URL);
                 // inititailiz the document element using the Jsoup library
 
+                Document document = Jsoup.connect(URL).get();
                 
                 //??????------------------------------------------------------------------------                
                 // *** 2-  get all links of the page         
                 // use document select  with parameter "a[href]")
-                
-                
-                //??????------------------------------------------------------------------------
-                // *** 3-  get all  paragtaphs <p></p>  elments from the page (document)
-
+                Elements linksOnPage = document.select( "a[href]");
                 
                 //??????------------------------------------------------------------------------
-                //**** 4-  get the text inside those parargraphs inside the tags <p></p>
+                // *** 3-  get all  paragraphs <p></p>  elements from the page (document)
+                Elements paragraphsOnPage = document.select("p");
+                
+                //??????------------------------------------------------------------------------
+                //**** 4-  get the text inside those paragraphs inside the tags <p></p>
                 //***       accumulate then into  to String docText
                String docText = "";
+               docText += paragraphsOnPage.text();
 
 
               //****     build the sourses (given)
-               //SourceRecord sr = new SourceRecord(fid, URL, document.title(), docText.substring(0, 30));
-                //sr.length = docText.length();
-                //sources.put(fid, sr);
+               SourceRecord sr = new SourceRecord(fid, URL, document.title(), docText.substring(0, 30));
+                sr.length = docText.length();
+                sources.put(fid, sr);
                 
                 //??????------------------------------------------------------------------------
-                //**** 5-  pass the cocText for the inverted index with the doc id
+                //**** 5-  pass the docText for the inverted index with the doc id
+
+                index.buildIndexCrawler(fid, docText);
                 
-                
-                
-                plinks++;  // accumulator for thel link in a sub-branch
+                plinks++;  // accumulator for the link in a sub-branch
                 fid++;   // current document id
                
 
-               // for (Element page : linksOnPage) {
-                //**** 6-  handle all the page hyper links "linksOnPage" you obtained from step 2 recursivly with depth +1
+                for (Element page : linksOnPage) {
+                //**** 6-  handle all the page hyperlinks "linksOnPage" you obtained from step 2 recursively with depth +1
                 //             Hint ::    Use  page.attr("abs:href") for each page
-             //    }
-                // plinks--;
-       //     } catch (IOException e) {
-       //         System.err.println("For '" + URL + "': " + e.getMessage());
-       //     }
+                    String newURL = page.attr("abs:href");
+                    getPageLinks(newURL,depth+1,index);
+                 }
+                 plinks--;
+            } catch (IOException e) {
+                System.err.println("For '" + URL + "': " + e.getMessage());
+            }
         }
     }
 //==============================================================================
@@ -170,21 +175,56 @@ public class WebCrawlerWithDepth {
     }
 
     void setDomainKnowledge(invertedIndex.Index5 index, String domain) {
-        if (domain.equals("test")) {
-            parsePageLinks("https://en.wikipedia.org/wiki/List_of_pharaohs", 0, index);
-            parsePageLinks("https://en.wikipedia.org/wiki/Cairo", 0, index);
-
-        }
-
+        parsePageLinks(domain, 0, index);
     }
+// compute cosine similarity
+    public List<Map.Entry<Integer, Double>> computeScores(String phrase, invertedIndex.Index5 index) {
+        int N = sources.size();
+        String result = "";
+        String[] words = phrase.split("\\W+");
+        int len = words.length;
+        //1 float Scores[N] = 0
+        Map<Integer, Double> scores = new HashMap<>(N); // N= collection size (10 files N =10)
+        for (int i = 0; i < N; i++) {
+            scores.put(i, 0.0);
+        }
+        //2 Initialize Length[N]
+        double length[] = new double[N];
+        //3 for each query term t
+        for (String term : words) {
+            //4 do calculate w t, q and fetch postings list for t
+            term = term.toLowerCase();
+            int tdf = index.index.get(term).doc_freq; // number of documents that contains the term
+            int ttf = index.index.get(term).term_freq; //
 
-//==============================================================================
-    public static void main(String[] args) {
+            //4.a compute idf
+            double idf = log10(N / (double) tdf); // can be computed earlier
+            //5 for each pair(doc_id, dtf ) in postings list
+            Posting p = index.index.get(term).pList;
+            //6 add the term score for (term/doc) to score of each doc
+            while (p.next != null) {
+                Double temp = scores.get(p.docId);
+                scores.put(p.docId, temp + (1 + log10((double) p.dtf)) * idf);
+                length[p.docId] = sources.get(p.docId).length;
+                p = p.next;
+            }
+            //Normalize for the length of the doc
+            //7 Read the array Length[d]
+            //8 for each d
+            Posting posting = index.index.get(term).pList;
+            while (p.next != null) {
+                //9 do Scores[d] = Scores[d]/Length[d]
+                scores.put(p.docId, scores.get(p.docId)/length[p.docId]);
+                p = p.next;
+            }
+            //10 return Top K components of Scores[]
+        }
+        List<Map.Entry<Integer, Double>> entryList = new ArrayList<>(scores.entrySet());
+        entryList.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
 
-        WebCrawlerWithDepth wc = new WebCrawlerWithDepth();
+        // Get the top k entries
+        List<Map.Entry<Integer, Double>> topKEntries = entryList.subList(0, Math.min(10, entryList.size()));
 
-        invertedIndex.Index5 index = wc.initialize("test"); //   ukraine
-            index.find_07a("narmer giza pyramid");
-            index.searchLoop();
+        return topKEntries;
     }
 }
