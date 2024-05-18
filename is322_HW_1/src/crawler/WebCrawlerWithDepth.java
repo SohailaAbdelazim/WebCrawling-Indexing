@@ -4,6 +4,7 @@ package crawler;
  *
  * @author ehab
  */
+import invertedIndex.DictEntry;
 import invertedIndex.Posting;
 import invertedIndex.SourceRecord;
 import org.jsoup.Jsoup;
@@ -229,4 +230,92 @@ public class WebCrawlerWithDepth {
     //10 return Top K components of Scores[]
     return topKEntries;
    }
+
+////// Trial 2 --------------------------
+
+    public List<Map.Entry<Integer, Double>> computeScoresV2(String phrase, invertedIndex.Index5 index) {
+        // Tokenize the query phrase
+        String[] words = phrase.split("\\W+");
+        Map<String, Integer> queryTerms = new HashMap<>();
+        for (String word : words) {
+            word = word.toLowerCase();
+            queryTerms.put(word, queryTerms.getOrDefault(word, 0) + 1);
+        }
+
+        // Collect all terms in the index
+        Set<String> allTerms = new HashSet<>(index.index.keySet());
+
+        // Convert query to a vector
+        double[] queryVector = convertToVector(queryTerms, allTerms);
+
+        // Initialize a map to store cosine similarity scores
+        Map<Integer, Double> scores = new HashMap<>();
+
+        // Iterate over each document in the sources
+        for (int docId : sources.keySet()) {
+            // Get document vector
+            Map<String, Integer> docTerms = getDocumentVector(docId, index );
+            double[] docVector = convertToVector(docTerms, allTerms);
+
+            // Compute cosine similarity
+            double score = computeCosineSimilarity(queryVector, docVector);
+
+            // Store the score
+            scores.put(docId, score);
+        }
+
+        // Convert the scores map to a list of entries and sort by score in descending order
+        List<Map.Entry<Integer, Double>> entryList = new ArrayList<>(scores.entrySet());
+        entryList.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
+
+        // Get the top K entries
+        List<Map.Entry<Integer, Double>> topKEntries = entryList.subList(0, Math.min(10, entryList.size()));
+
+        // Return the top K components of Scores[]
+        return topKEntries;
+    }
+
+// Assuming the following methods are already defined in your class
+
+    // Method to get the document vector
+    public Map<String, Integer> getDocumentVector(int docId, invertedIndex.Index5 index ) {
+        Map<String, Integer> docVector = new HashMap<>();
+
+        for (Map.Entry<String, DictEntry> entry : index.index.entrySet()) {
+            String term = entry.getKey();
+            DictEntry dictEntry = entry.getValue();
+
+            int termFreq = dictEntry.getPosting(docId);
+            if (termFreq > 0) {
+                docVector.put(term, termFreq);
+            }
+        }
+
+        return docVector;
+    }
+
+    // Method to convert terms to vector
+    private double[] convertToVector(Map<String, Integer> terms, Set<String> allTerms) {
+        double[] vector = new double[allTerms.size()];
+        int i = 0;
+        for (String term : allTerms) {
+            vector[i++] = terms.getOrDefault(term, 0);
+        }
+        return vector;
+    }
+
+    // Method to compute cosine similarity
+    private double computeCosineSimilarity(double[] vec1, double[] vec2) {
+        double dotProduct = 0.0;
+        double normA = 0.0;
+        double normB = 0.0;
+        for (int i = 0; i < vec1.length; i++) {
+            dotProduct += vec1[i] * vec2[i];
+            normA += Math.pow(vec1[i], 2);
+            normB += Math.pow(vec2[i], 2);
+        }
+        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB) + 1e-6);
+    }
+
+
 }

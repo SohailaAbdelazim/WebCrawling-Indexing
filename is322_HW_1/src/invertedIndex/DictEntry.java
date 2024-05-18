@@ -31,7 +31,7 @@ public Posting pList = null;
     }
 //------------------------------------------------
 
-    int getPosting(int i) {
+    public int getPosting(int i) {
         int found = 0;
         Posting p = pList;
         while (p != null) {
