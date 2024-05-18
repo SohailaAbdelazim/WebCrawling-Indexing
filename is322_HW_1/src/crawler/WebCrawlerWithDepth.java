@@ -178,53 +178,54 @@ public class WebCrawlerWithDepth {
         parsePageLinks(domain, 0, index);
     }
 // compute cosine similarity
-    public List<Map.Entry<Integer, Double>> computeScores(String phrase, invertedIndex.Index5 index) {
-        int N = sources.size();
-        String result = "";
-        String[] words = phrase.split("\\W+");
-        int len = words.length;
-        //1 float Scores[N] = 0
-        Map<Integer, Double> scores = new HashMap<>(N); // N= collection size (10 files N =10)
-        for (int i = 0; i < N; i++) {
-            scores.put(i, 0.0);
-        }
-        //2 Initialize Length[N]
-        double length[] = new double[N];
-        //3 for each query term t
-        for (String term : words) {
-            //4 do calculate w t, q and fetch postings list for t
-            term = term.toLowerCase();
-            int tdf = index.index.get(term).doc_freq; // number of documents that contains the term
-            int ttf = index.index.get(term).term_freq; //
+ public List<Map.Entry<Integer, Double>> computeScores(String phrase, invertedIndex.Index5 index) {
+    int N = sources.size();
 
-            //4.a compute idf
-            double idf = log10(N / (double) tdf); // can be computed earlier
-            //5 for each pair(doc_id, dtf ) in postings list
-            Posting p = index.index.get(term).pList;
-            //6 add the term score for (term/doc) to score of each doc
-            while (p != null) {
-                Double temp = scores.get(p.docId);
-                scores.put(p.docId, temp + (1 + log10((double) p.dtf)) * idf);
-                length[p.docId] = sources.get(p.docId).length;
-                p = p.next;
-            }
-            //Normalize for the length of the doc
-            //7 Read the array Length[d]
-            //8 for each d
-            p = index.index.get(term).pList;
-            while (p != null) {
-                //9 do Scores[d] = Scores[d]/Length[d]
-                scores.put(p.docId, scores.get(p.docId)/length[p.docId]);
-                p = p.next;
-            }
-            //10 return Top K components of Scores[]
-        }
-        List<Map.Entry<Integer, Double>> entryList = new ArrayList<>(scores.entrySet());
-        entryList.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
-
-        // Get the top k entries
-        List<Map.Entry<Integer, Double>> topKEntries = entryList.subList(0, Math.min(10, entryList.size()));
-
-        return topKEntries;
+    String[] words = phrase.split("\\W+");
+    //1 float Scores[N] = 0
+    Map<Integer, Double> scores = new HashMap<>(N); // N= collection size (10 files N =10)
+    for (int i = 0; i < N; i++) {
+        scores.put(i, 0.0);
     }
+
+    //2 Initialize Length[N]
+    // double length[] = new double[N];
+
+    //3 for each query term t
+    for (String term : words) {
+        //4 do calculate w t, q and fetch postings list for t
+        term = term.toLowerCase();
+        int tdf = index.index.get(term).doc_freq; // number of documents that contains the term
+        int ttf = index.index.get(term).term_freq; //
+
+        //4.a compute idf
+        double idf = log10(N / (double) tdf); // can be computed earlier
+        //5 for each pair(doc_id, dtf ) in postings list
+        Posting p = index.index.get(term).pList;
+        //6 add the term score for (term/doc) to score of each doc
+        while (p != null) {
+            Double temp = scores.get(p.docId);
+            scores.put(p.docId, temp + (1 + log10((double) p.dtf)) * idf);
+            p = p.next;
+        }
+
+    }
+
+    //Normalize for the length of the doc
+    //7 Read the array Length[d]
+    //8 for each d
+    for (Map.Entry<Integer, Double> entry : scores.entrySet()) {
+        Integer docId = entry.getKey();
+        Double score = entry.getValue();
+        scores.put(docId, score/sources.get(docId).length);
+    }
+
+    List<Map.Entry<Integer, Double>> entryList = new ArrayList<>(scores.entrySet());
+    entryList.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
+
+    // Get the top k entries
+    List<Map.Entry<Integer, Double>> topKEntries = entryList.subList(0, Math.min(10, entryList.size()));
+    //10 return Top K components of Scores[]
+    return topKEntries;
+   }
 }
