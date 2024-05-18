@@ -164,7 +164,7 @@ public class WebCrawlerWithDepth {
         setSources(index);
         setDomainKnowledge(index, storageName);
         index.setN(fid);
-        index.store(storageName);
+        index.store(storageName, index.index);
 
         return index;
     }

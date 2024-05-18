@@ -786,6 +786,12 @@ public class Index5 {
         }
         return index;
     }
+
+    public void find_07a(String narmerGizaPyramid) {
+    }
+
+    public void searchLoop() {
+    }
 }
 
 //=====================================================================
