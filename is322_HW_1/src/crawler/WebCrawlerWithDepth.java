@@ -202,7 +202,7 @@ public class WebCrawlerWithDepth {
             //5 for each pair(doc_id, dtf ) in postings list
             Posting p = index.index.get(term).pList;
             //6 add the term score for (term/doc) to score of each doc
-            while (p.next != null) {
+            while (p != null) {
                 Double temp = scores.get(p.docId);
                 scores.put(p.docId, temp + (1 + log10((double) p.dtf)) * idf);
                 length[p.docId] = sources.get(p.docId).length;
@@ -211,8 +211,8 @@ public class WebCrawlerWithDepth {
             //Normalize for the length of the doc
             //7 Read the array Length[d]
             //8 for each d
-            Posting posting = index.index.get(term).pList;
-            while (p.next != null) {
+            p = index.index.get(term).pList;
+            while (p != null) {
                 //9 do Scores[d] = Scores[d]/Length[d]
                 scores.put(p.docId, scores.get(p.docId)/length[p.docId]);
                 p = p.next;
