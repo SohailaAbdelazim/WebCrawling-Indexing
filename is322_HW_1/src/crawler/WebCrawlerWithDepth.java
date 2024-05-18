@@ -193,6 +193,7 @@ public class WebCrawlerWithDepth {
 
     //3 for each query term t
     for (String term : words) {
+        if (index.index.containsKey(term)) {
         //4 do calculate w t, q and fetch postings list for t
         term = term.toLowerCase();
         int tdf = index.index.get(term).doc_freq; // number of documents that contains the term
@@ -208,7 +209,7 @@ public class WebCrawlerWithDepth {
             scores.put(p.docId, temp + (1 + log10((double) p.dtf)) * idf);
             p = p.next;
         }
-
+        }
     }
 
     //Normalize for the length of the doc
